@@ -3,7 +3,6 @@ package pages.payment.provider;
 import com.microsoft.playwright.*;
 import org.junit.jupiter.api.*;
 import pages.mainPage.MenuBarPage;
-import pages.payment.provider.PaymentProviderListPage;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -191,6 +190,30 @@ public class PaymentProviderListCoreTests {
 
         String urlBefore = page.url();
         providerListPage.clickEditCurrencies(0);
+
+        assertFlowOpenedAfterClick(urlBefore);
+    }
+
+    @Test
+    @DisplayName("Payment Provider List -> проверка открытия 'Details'")
+    @Order(9)
+    void detailsButton_shouldOpenFlow_forFirstRow() throws InterruptedException {
+        goToPaymentProviderList();
+
+        String urlBefore = page.url();
+        providerListPage.clickDetails(0);
+
+        assertFlowOpenedAfterClick(urlBefore);
+    }
+
+    @Test
+    @DisplayName("Payment Provider List -> проверка открытия 'Add certificate'")
+    @Order(10)
+    void addCertificateButton_shouldOpenFlow_forFirstRow() throws InterruptedException {
+        goToPaymentProviderList();
+
+        String urlBefore = page.url();
+        providerListPage.clickAddCertificate(0);
 
         assertFlowOpenedAfterClick(urlBefore);
     }
