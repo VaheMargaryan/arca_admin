@@ -139,12 +139,6 @@ public class PaymentProviderListCoreTests {
         );
     }
 
-    // Оставил метод, но сейчас тесты используют assertFlowOpenedAfterClick
-    private void assertHeaderText(String expectedHeader) {
-        Locator header = page.locator("app-page-title h3.page-title").first();
-        assertThat(header).hasText(expectedHeader);
-    }
-
     // ===== Тесты =====
 
     @Test
