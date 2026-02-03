@@ -43,6 +43,20 @@ public class PaymentProviderListPage {
         return row.locator("td.mat-column-actions");
     }
 
+    // Кнопка "Details" (иконка info) в конкретной строке
+    // На твоём DOM mat-icon имеет aria-label="global.actions.details"
+    private Locator detailsButton(Locator row) {
+        return actionsCell(row)
+                .locator("button.mat-mdc-icon-button:has(mat-icon[aria-label='global.actions.details'])");
+    }
+
+    // Кнопка "Add certificate" (иконка add) в конкретной строке
+    // На твоём DOM mat-icon имеет aria-label="payment.provider.table.add_certificate"
+    private Locator addCertificateButton(Locator row) {
+        return actionsCell(row)
+                .locator("button.mat-mdc-icon-button:has(mat-icon[aria-label='payment.provider.table.add_certificate'])");
+    }
+
     // Кнопка "три точки" (открывает edit-меню) в конкретной строке
     private Locator kebabMenuButton(Locator row) {
         return actionsCell(row).locator("button.mat-mdc-menu-trigger");
@@ -73,6 +87,27 @@ public class PaymentProviderListPage {
     // Click Create
     public void clickCreateButton() {
         createButton.click();
+    }
+
+    /**
+     * Click "Details" (иконка info) в строке rowIndex.
+     * Обычно открывает страницу/диалог/панель с деталями провайдера.
+     */
+    public void clickDetails(int rowIndex) {
+        Locator row = rowByIndex(rowIndex);
+        // на всякий случай скроллим строку в видимую область
+        row.scrollIntoViewIfNeeded();
+        detailsButton(row).click();
+    }
+
+    /**
+     * Click "Add certificate" (иконка add) в строке rowIndex.
+     * Обычно открывает флоу добавления сертификата.
+     */
+    public void clickAddCertificate(int rowIndex) {
+        Locator row = rowByIndex(rowIndex);
+        row.scrollIntoViewIfNeeded();
+        addCertificateButton(row).click();
     }
 
     // ===== Методы edit-меню (для любой строки таблицы) =====
