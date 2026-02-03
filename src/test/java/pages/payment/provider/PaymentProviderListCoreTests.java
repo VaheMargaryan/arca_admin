@@ -26,6 +26,21 @@ public class PaymentProviderListCoreTests {
             System.getProperty("baseUrl",
                     System.getenv().getOrDefault("BASE_URL", "https://admin-web-dev.itguru.am/home"));
 
+    // ===== Ожидаемые заголовки flow (точные значения) =====
+    private static final Pattern EXPECTED_FLOW_HEADERS = Pattern.compile(
+            "^(?:"
+                    + "Edit Payment Provider"
+                    + "|Edit Payment Provider External Connections"
+                    + "|Edit Payment Provider Accounts"
+                    + "|Edit Payment Provider Service Identifiers"
+                    + "|Edit Payment Provider Certificate"
+                    + "|Edit Payment Provider Currencies"
+                    + "|Add provider certificate"
+                    + "|Provider details"
+                    + "|Create Payment Provider"
+                    + ")$"
+    );
+
     @BeforeAll
     void beforeAll() {
         playwright = Playwright.create();
@@ -61,38 +76,72 @@ public class PaymentProviderListCoreTests {
     private void goToPaymentProviderList() {
         menuBarPage.clickPaymentProvider();
 
-        // ждём, что роутинг реально привёл на Provider List
+        // Ждём, что роутинг реально привёл на Provider List
         assertThat(page).hasURL(Pattern.compile(".*/payment/provider/list.*"));
     }
 
     /**
-     * Универсальная проверка: после клика должно либо измениться URL, либо открыться диалог/панель.
-     * (так как точный expected UI ты не описал)
+     * Универсальная проверка: после клика должно либо измениться URL,
+     * либо появиться заголовок (страницы/диалога) с одним из ожидаемых текстов.
      */
-    private void assertFlowOpenedAfterClick(String urlBefore) throws InterruptedException {
-        Locator anyDialog = page.locator("mat-dialog-container, [role='dialog']");
-        Locator anyOverlayPane = page.locator(".cdk-overlay-pane:visible");
-        Locator anyDrawer = page.locator("mat-drawer:visible, mat-sidenav:visible, .mat-drawer:visible, .mat-sidenav:visible");
+    private void assertFlowOpenedAfterClick(String urlBefore) {
+        Locator pageHeader = page.locator("app-page-title h3.page-title").first();
+
+        Locator dialogHeader = page.locator(
+                "mat-dialog-container [mat-dialog-title], " +
+                        "mat-dialog-container .mat-mdc-dialog-title, " +
+                        "mat-dialog-container h1, mat-dialog-container h2, mat-dialog-container h3"
+        ).first();
 
         long end = System.currentTimeMillis() + 5000;
+        String lastSeenHeader = null;
 
         while (System.currentTimeMillis() < end) {
-            if (!page.url().equals(urlBefore)) return;
-            if (anyDialog.first().isVisible()) return;
-            if (anyDrawer.first().isVisible()) return;
-            if (anyOverlayPane.first().isVisible()) return;
 
+            // 1) URL изменился — значит открылся новый роут/экран
+            if (!page.url().equals(urlBefore)) return;
+
+            // 2) Проверяем заголовок страницы
+            if (pageHeader.isVisible()) {
+                try {
+                    String text = pageHeader.innerText();
+                    if (text != null) {
+                        lastSeenHeader = text.trim();
+                        if (EXPECTED_FLOW_HEADERS.matcher(lastSeenHeader).matches()) return;
+                    }
+                } catch (Exception ignored) {
+                    // элемент мог перерисоваться в момент чтения — просто пробуем дальше
+                }
+            }
+
+            // 3) Проверяем заголовок диалога
+            if (dialogHeader.isVisible()) {
+                try {
+                    String text = dialogHeader.innerText();
+                    if (text != null) {
+                        lastSeenHeader = text.trim();
+                        if (EXPECTED_FLOW_HEADERS.matcher(lastSeenHeader).matches()) return;
+                    }
+                } catch (Exception ignored) {
+                    // элемент мог перерисоваться в момент чтения — просто пробуем дальше
+                }
+            }
+
+            // Короткое ожидание и повтор
             page.waitForTimeout(100);
         }
 
-        Assertions.fail("После клика не открылся ни диалог/панель и URL не изменился.");
+        Assertions.fail(
+                "После клика не открылся ожидаемый flow: URL не изменился и заголовок не совпал с ожидаемыми.\n" +
+                        "URL(before) = " + urlBefore + "\n" +
+                        "URL(after)  = " + page.url() + "\n" +
+                        "Last header = " + lastSeenHeader
+        );
     }
 
+    // Оставил метод, но сейчас тесты используют assertFlowOpenedAfterClick
     private void assertHeaderText(String expectedHeader) {
-        // Заголовок страницы (по твоему DOM это h3.page-title внутри app-page-title)
         Locator header = page.locator("app-page-title h3.page-title").first();
-
-        // Playwright Assertions сами ждут появления/изменения текста (auto-wait)
         assertThat(header).hasText(expectedHeader);
     }
 
@@ -105,7 +154,8 @@ public class PaymentProviderListCoreTests {
         goToPaymentProviderList();
 
         List<String> providerNames = providerListPage.columnTexts("providerName");
-        Assertions.assertFalse(providerNames.isEmpty(), "Колонка providerName пустая (данные не загрузились или локатор неверный).");
+        Assertions.assertFalse(providerNames.isEmpty(),
+                "Колонка providerName пустая (данные не загрузились или локатор неверный).");
 
         System.out.println("First providerName = " + providerNames.get(0));
     }
@@ -113,7 +163,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия страницы 'Create Payment Provider'")
     @Order(2)
-    void createButton_shouldOpenCreateFlow() throws InterruptedException {
+    void createButton_shouldOpenCreateFlow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
@@ -125,7 +175,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия страницы 'Edit'")
     @Order(3)
-    void actionsMenu_edit_shouldOpenFlow_forFirstRow() throws InterruptedException {
+    void actionsMenu_edit_shouldOpenFlow_forFirstRow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
@@ -137,7 +187,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия страницы 'Edit external connections'")
     @Order(4)
-    void actionsMenu_editExternalConnections_shouldOpenFlow_forFirstRow() throws InterruptedException {
+    void actionsMenu_editExternalConnections_shouldOpenFlow_forFirstRow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
@@ -149,7 +199,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия страницы 'Edit accounts'")
     @Order(5)
-    void actionsMenu_editAccounts_shouldOpenFlow_forFirstRow() throws InterruptedException {
+    void actionsMenu_editAccounts_shouldOpenFlow_forFirstRow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
@@ -161,7 +211,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия страницы 'Edit service identifiers'")
     @Order(6)
-    void actionsMenu_editServiceIdentifiers_shouldOpenFlow_forFirstRow() throws InterruptedException {
+    void actionsMenu_editServiceIdentifiers_shouldOpenFlow_forFirstRow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
@@ -173,7 +223,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия страницы 'Edit certificate'")
     @Order(7)
-    void actionsMenu_editCertificate_shouldOpenFlow_forFirstRow() throws InterruptedException {
+    void actionsMenu_editCertificate_shouldOpenFlow_forFirstRow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
@@ -185,7 +235,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия страницы 'Edit currencies'")
     @Order(8)
-    void actionsMenu_editCurrencies_shouldOpenFlow_forFirstRow() throws InterruptedException {
+    void actionsMenu_editCurrencies_shouldOpenFlow_forFirstRow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
@@ -197,7 +247,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия 'Details'")
     @Order(9)
-    void detailsButton_shouldOpenFlow_forFirstRow() throws InterruptedException {
+    void detailsButton_shouldOpenFlow_forFirstRow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
@@ -209,7 +259,7 @@ public class PaymentProviderListCoreTests {
     @Test
     @DisplayName("Payment Provider List -> проверка открытия 'Add certificate'")
     @Order(10)
-    void addCertificateButton_shouldOpenFlow_forFirstRow() throws InterruptedException {
+    void addCertificateButton_shouldOpenFlow_forFirstRow() {
         goToPaymentProviderList();
 
         String urlBefore = page.url();
