@@ -41,25 +41,6 @@ public class PaymentMerchantListPage {
         );
     }
 
-    // ===== Ожидания / проверки =====
-
-    /**
-     * Ждём, что открыта нужная страница по заголовку (и что таблица присутствует).
-     */
-    @Step("Wait Payment Merchant List page opened")
-    public void waitOpened() {
-        assertThat(pageTitle).hasText("Payment Merchant List");
-        table.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-    }
-
-    /**
-     * Если хочешь проверять URL (если роут стабильный).
-     */
-    @Step("Assert URL matches: {pattern}")
-    public void assertUrlMatches(Pattern pattern) {
-        assertThat(page).hasURL(pattern);
-    }
-
     // ===== Таблица (универсально по mat-column-<key>) =====
 
     /**
