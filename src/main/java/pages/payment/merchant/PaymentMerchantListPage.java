@@ -7,9 +7,6 @@ import com.microsoft.playwright.options.WaitForSelectorState;
 import io.qameta.allure.Step;
 
 import java.util.List;
-import java.util.regex.Pattern;
-
-import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 public class PaymentMerchantListPage {
     private final Page page;
