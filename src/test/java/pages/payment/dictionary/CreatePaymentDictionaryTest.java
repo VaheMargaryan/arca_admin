@@ -146,21 +146,21 @@ public class CreatePaymentDictionaryTest {
         );
     }
 
-    private void assertSuccessToast(String expectedText) {
+    private void assertSuccessToast() {
         Locator successMsg = page.locator(
                         "mat-snack-bar-container, " +
                                 "simple-snack-bar, " +
                                 "[role='status'], " +
                                 "[aria-live='polite']"
                 )
-                .filter(new Locator.FilterOptions().setHasText(expectedText))
+                .filter(new Locator.FilterOptions().setHasText("The dictionary was created successfully."))
                 .first();
 
         successMsg.waitFor(new Locator.WaitForOptions()
                 .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
                 .setTimeout(10_000));
 
-        assertThat(successMsg).containsText(expectedText);
+        assertThat(successMsg).containsText("The dictionary was created successfully.");
     }
 
     private String randomEntryId() {
@@ -229,7 +229,7 @@ public class CreatePaymentDictionaryTest {
 
         createPaymentDictionaryPage.clickSave();
 
-        assertSuccessToast("The dictionary was created successfully.");
+        assertSuccessToast();
 
         // Теперь получаем ID созданной записи из списка, чтобы удалить через API
         goToPaymentDictionaryList();
