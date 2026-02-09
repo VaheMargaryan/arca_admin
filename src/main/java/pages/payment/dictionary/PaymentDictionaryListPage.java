@@ -2,202 +2,134 @@ package pages.payment.dictionary;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.WaitForSelectorState;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 public class PaymentDictionaryListPage {
     private final Page page;
 
-    // ===== Локаторы страницы (общие) =====
-
-    // Заголовок страницы (на скрине: "Payment Dictionary List")
     private final Locator pageTitle;
 
-    // Таблица (якорь для всех операций со строками/ячейками)
-    private final Locator table;
-
-    // Кнопка Create (в правом верхнем углу)
     private final Locator createButton;
-
-    // Bulk-кнопки (активируются после выбора строк)
     private final Locator deleteSelectedButton;
-    private final Locator editSelectedButton;
+
+    private final Locator table;
+    private final Locator rows;
 
     public PaymentDictionaryListPage(Page page) {
         this.page = page;
 
-        // Заголовок (как в твоих Provider/Merchant)
         this.pageTitle = page.locator("app-page-title h3.page-title, h3.page-title").first();
 
-        // Таблица: подстраховка на разные контейнеры
-        this.table = page.locator("main table[role='table'], table[role='table']").first();
-
-        // Create — чаще всего реально имеет текст Create
-        this.createButton = page.getByRole(
-                AriaRole.BUTTON,
-                new Page.GetByRoleOptions().setName("Create").setExact(true)
-        );
-
-        // Delete selected / Edit Selected — по тексту кнопок на скрине
+        this.createButton = page.locator("button:has-text('Create'), button:has(span:has-text('Create'))").first();
         this.deleteSelectedButton = page.locator("button:has-text('Delete selected')").first();
-        this.editSelectedButton = page.locator("button:has-text('Edit Selected')").first();
+
+        this.table = page.locator("main table[role='table'], table[role='table']").first();
+        this.rows = table.locator("tbody tr.mat-mdc-row, tbody tr[role='row'], tbody tr");
     }
 
-    // ===== Ожидания / проверки =====
-
-    /**
-     * Ждём, что открылась нужная страница и таблица видима.
-     */
     public void waitOpened() {
         assertThat(pageTitle).hasText("Payment Dictionary List");
-        table.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+        assertThat(table).isVisible();
     }
-
-    // ===== Хелперы: строки / чекбоксы / actions =====
-
-    /**
-     * Все строки таблицы (tbody).
-     */
-    private Locator rows() {
-        return table.locator("tbody tr.mat-mdc-row, tbody tr[role='row'], tbody tr");
-    }
-
-    /**
-     * Строка по индексу (0-based).
-     */
-    public Locator rowByIndex(int rowIndex) {
-        return rows().nth(rowIndex);
-    }
-
-    /**
-     * Чекбокс в строке.
-     * В Material обычно внутри td есть input[type=checkbox].
-     */
-    private Locator rowCheckbox(Locator row) {
-        // На скрине первый столбец — чекбоксы
-        return row.locator("input[type='checkbox']").first();
-    }
-
-    /**
-     * Header checkbox (выделить все).
-     */
-    private Locator headerCheckbox() {
-        return table.locator("thead input[type='checkbox']").first();
-    }
-
-    /**
-     * Ячейка Actions в строке.
-     */
-    private Locator actionsCell(Locator row) {
-        return row.locator("td.mat-column-actions, td.cdk-column-actions, td:last-child").first();
-    }
-
-    /**
-     * Кнопка delete (иконка корзины) в Actions.
-     * Делаем несколько вариантов, т.к. в DOM может быть:
-     * - mat-icon[data-mat-icon-name='delete']
-     * - mat-icon с текстом 'delete'
-     * - aria-label со словом delete
-     */
-    private Locator deleteRowButton(Locator row) {
-        Locator cell = actionsCell(row);
-
-        // 1) самый желательный вариант: data-mat-icon-name="delete"
-        Locator byDataName = cell.locator("button:has(mat-icon[data-mat-icon-name='delete'])").first();
-        // 2) у некоторых mat-icon “delete” лежит текстом
-        Locator byTextIcon = cell.locator("button:has(mat-icon:has-text('delete'))").first();
-        // 3) aria-label содержит delete (на всякий)
-        Locator byAria = cell.locator("button[aria-label*='delete' i], button:has(mat-icon[aria-label*='delete' i])").first();
-
-        // Возвращаем первый “живой” (в момент вызова он ещё может быть не видим — ок, клик подождёт)
-        return byDataName.or(byTextIcon).or(byAria).first();
-    }
-
-    // ===== Методы: верхние кнопки =====
 
     public void clickCreate() {
         createButton.click();
     }
 
+    // ===== Поиск строк =====
+
+    private Locator rowByEntryId(String entryId) {
+        // entryId обычно лежит в колонке entryId -> mat-column-entryId
+        Locator entryCell = page.locator("td.mat-column-entryId, td.cdk-column-entryId")
+                .filter(new Locator.FilterOptions().setHasText(entryId));
+
+        return rows.filter(new Locator.FilterOptions().setHas(entryCell)).first();
+    }
+
+    public boolean isEntryIdPresent(String entryId) {
+        return rowByEntryId(entryId).count() > 0;
+    }
+
+    public void waitEntryIdVisible(String entryId) {
+        rowByEntryId(entryId).waitFor(new Locator.WaitForOptions()
+                .setState(WaitForSelectorState.VISIBLE)
+                .setTimeout(10_000));
+    }
+
+    public void waitEntryIdDisappears(String entryId) {
+        rowByEntryId(entryId).waitFor(new Locator.WaitForOptions()
+                .setState(WaitForSelectorState.HIDDEN)
+                .setTimeout(10_000));
+    }
+
+    // ===== Выбор чекбоксов =====
+
+    public void selectRowByEntryId(String entryId) {
+        Locator row = rowByEntryId(entryId);
+        row.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(10_000));
+
+        // материал чекбокс чаще кликают по mat-checkbox
+        Locator checkbox = row.locator("mat-checkbox").first();
+        if (checkbox.count() == 0) {
+            checkbox = row.locator("[role='checkbox'], input[type='checkbox']").first();
+        }
+
+        checkbox.scrollIntoViewIfNeeded();
+        checkbox.click(new Locator.ClickOptions().setForce(true));
+    }
+
+    // ===== Delete selected =====
+
     public void clickDeleteSelected() {
+        waitEnabled(deleteSelectedButton, 7_000);
         deleteSelectedButton.click();
     }
 
-    public void clickEditSelected() {
-        editSelectedButton.click();
+    // ===== Удаление через иконку мусорки =====
+
+    public void clickTrashDeleteByEntryId(String entryId) {
+        Locator row = rowByEntryId(entryId);
+        row.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(10_000));
+
+        Locator deleteBtn = row.locator("td.mat-column-actions, td.cdk-column-actions")
+                .locator(
+                        "button:has(mat-icon[aria-label='dictionary.table.delete']), " +
+                                "button:has(mat-icon[fonticon='delete']), " +
+                                "button:has(mat-icon:has-text('delete'))"
+                )
+                .first();
+
+        deleteBtn.scrollIntoViewIfNeeded();
+        deleteBtn.click();
     }
 
-    // ===== Методы: выбор строк =====
+    public void confirmDeleteModal() {
+        Locator confirm = page.locator(
+                        "app-confirmation-dialog button:has-text('Confirm'), " +
+                                "mat-dialog-container button:has-text('Confirm')"
+                )
+                .first();
 
-    public void selectRow(int rowIndex) {
-        Locator cb = rowCheckbox(rowByIndex(rowIndex));
-        if (!cb.isChecked()) cb.check();
+        confirm.waitFor(new Locator.WaitForOptions()
+                .setState(WaitForSelectorState.VISIBLE)
+                .setTimeout(7_000));
+
+        confirm.click();
     }
 
-    public void unselectRow(int rowIndex) {
-        Locator cb = rowCheckbox(rowByIndex(rowIndex));
-        if (cb.isChecked()) cb.uncheck();
-    }
+    // ===== util =====
 
-    public void selectAll() {
-        Locator cb = headerCheckbox();
-        if (!cb.isChecked()) cb.check();
-    }
-
-    public void unselectAll() {
-        Locator cb = headerCheckbox();
-        if (cb.isChecked()) cb.uncheck();
-    }
-
-    // ===== Методы: действия в строке =====
-
-    /**
-     * Клик по корзине (delete) в строке.
-     * Обычно после этого появляется confirm dialog — его уже проверяешь в тесте.
-     */
-    public void clickDeleteRow(int rowIndex) {
-        Locator row = rowByIndex(rowIndex);
-        deleteRowButton(row).click();
-    }
-
-    // ===== Методы: работа с колонками (универсально через mat-column-<key>) =====
-
-    /**
-     * Возвращает локатор всех ячеек (td) указанной колонки.
-     * columnKey — часть после "mat-column-" в DevTools.
-     * Примеры (предположительно по скрину):
-     * "keyId", "entryId", "languageId", "value", "behavior", "id", "actions"
-     */
-    public Locator columnCells(String columnKey) {
-        return table.locator("tbody tr td.mat-column-" + columnKey);
-    }
-
-    /**
-     * Тексты из колонки. Ждём, что первая ячейка стала видимой => данные подгрузились.
-     */
-    public List<String> columnTexts(String columnKey) {
-        Locator firstCell = columnCells(columnKey).first();
-        firstCell.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-
-        return columnCells(columnKey)
-                .allTextContents()
-                .stream()
-                .map(String::trim)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Удобный хелпер: текст конкретной ячейки в строке.
-     */
-    public String cellText(int rowIndex, String columnKey) {
-        Locator cell = rowByIndex(rowIndex).locator("td.mat-column-" + columnKey).first();
-        cell.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
-        return cell.innerText().trim();
+    private void waitEnabled(Locator button, long timeoutMs) {
+        long end = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < end) {
+            try {
+                if (button.isVisible() && button.isEnabled()) return;
+            } catch (Exception ignored) {}
+            page.waitForTimeout(100);
+        }
+        throw new AssertionError("Button was not enabled within " + timeoutMs + "ms");
     }
 
     public int getDictionaryIdByEntryId(String entryId) {
@@ -213,38 +145,4 @@ public class PaymentDictionaryListPage {
         String idText = row.locator("td.mat-column-id, td.cdk-column-id").first().innerText().trim();
         return Integer.parseInt(idText);
     }
-
-    // Найти ID созданного Dictionary Item по EntryId (и Value для надёжности)
-    public int findCreatedIdByEntryIdAndValue(String entryId, String value) {
-        // Подстрой селектор table под свой (ниже максимально универсально)
-        Locator table = page.locator("main table[role='table'], table[role='table']").first();
-        Locator rows = table.locator("tbody tr");
-
-        Locator row = rows
-                .filter(new Locator.FilterOptions().setHasText(entryId))
-                .filter(new Locator.FilterOptions().setHasText(value))
-                .first();
-
-        row.waitFor(new Locator.WaitForOptions()
-                .setState(WaitForSelectorState.VISIBLE)
-                .setTimeout(10_000));
-
-        // Колонка ID чаще всего mat-column-id
-        Locator idCell = row.locator(
-                "td.mat-column-id, td.mat-column-ID, td.cdk-column-id, td.cdk-column-ID"
-        ).first();
-
-        idCell.waitFor(new Locator.WaitForOptions()
-                .setState(WaitForSelectorState.VISIBLE)
-                .setTimeout(5_000));
-
-        String idText = idCell.innerText().trim();
-        try {
-            return Integer.parseInt(idText);
-        } catch (NumberFormatException e) {
-            throw new IllegalStateException("Не смог распарсить ID из колонки ID. Text='" + idText + "'");
-        }
-    }
-
-
 }
