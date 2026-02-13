@@ -305,8 +305,8 @@ public class PaymentDictionaryListCoreTests {
 
     static Stream<org.junit.jupiter.params.provider.Arguments> editTwoCases() {
         return Stream.of(
-                arguments("English",  101L, "random text test #1", 202L, "random text test #2"),
-                arguments("Russian",  303L, "рандомное значение тест #1", 404L, "рандомное значение тест #2")
+                arguments("English",  101L, "random text test first", 202L, "random text test second"),
+                arguments("Russian",  303L, "рандомное значение тест первое", 404L, "рандомное значение тест второе")
         );
     }
 
