@@ -66,7 +66,7 @@ public class CreatePaymentDictionaryPage {
         return page.locator("mat-form-field:has-text('Language') mat-select");
     }
 
-    // Dictionary Entry ID* (input) — один на строку
+    // Dictionary Entry ID (input) — один на строку
     private Locator dictionaryEntryIdInputs() {
         return page.locator("mat-form-field:has-text('Dictionary Entry ID') input");
     }

@@ -13,6 +13,7 @@ public class PaymentDictionaryListPage {
 
     private final Locator createButton;
     private final Locator deleteSelectedButton;
+    private final Locator editSelectedButton;
 
     private final Locator table;
     private final Locator rows;
@@ -24,6 +25,14 @@ public class PaymentDictionaryListPage {
 
         this.createButton = page.locator("button:has-text('Create'), button:has(span:has-text('Create'))").first();
         this.deleteSelectedButton = page.locator("button:has-text('Delete selected')").first();
+
+        // 1) основной вариант — по видимому тексту
+        // 2) fallback — по css-классу кнопки (edit-button)
+        this.editSelectedButton = page.locator(
+                "button:has(span.mdc-button__label:text-is('Edit Selected')), " +
+                        "button.edit-button:has-text('Edit Selected'), " +
+                        "button:has-text('Edit Selected')"
+        ).first();
 
         this.table = page.locator("main table[role='table'], table[role='table']").first();
         this.rows = table.locator("tbody tr.mat-mdc-row, tbody tr[role='row'], tbody tr");
@@ -41,7 +50,6 @@ public class PaymentDictionaryListPage {
     // ===== Поиск строк =====
 
     private Locator rowByEntryId(String entryId) {
-        // entryId обычно лежит в колонке entryId -> mat-column-entryId
         Locator entryCell = page.locator("td.mat-column-entryId, td.cdk-column-entryId")
                 .filter(new Locator.FilterOptions().setHasText(entryId));
 
@@ -70,7 +78,6 @@ public class PaymentDictionaryListPage {
         Locator row = rowByEntryId(entryId);
         row.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(10_000));
 
-        // материал чекбокс чаще кликают по mat-checkbox
         Locator checkbox = row.locator("mat-checkbox").first();
         if (checkbox.count() == 0) {
             checkbox = row.locator("[role='checkbox'], input[type='checkbox']").first();
@@ -85,6 +92,25 @@ public class PaymentDictionaryListPage {
     public void clickDeleteSelected() {
         waitEnabled(deleteSelectedButton, 7_000);
         deleteSelectedButton.click();
+    }
+
+    // ===== Edit selected =====
+
+    public boolean isEditSelectedEnabled() {
+        try {
+            return editSelectedButton.isVisible() && editSelectedButton.isEnabled();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public void waitEditSelectedEnabled(long timeoutMs) {
+        waitEnabled(editSelectedButton, timeoutMs);
+    }
+
+    public void clickEditSelected() {
+        waitEnabled(editSelectedButton, 7_000);
+        editSelectedButton.click();
     }
 
     // ===== Удаление через иконку мусорки =====
@@ -133,7 +159,6 @@ public class PaymentDictionaryListPage {
     }
 
     public int getDictionaryIdByEntryId(String entryId) {
-        // Таблица уже должна быть видима (waitOpened)
         Locator row = table.locator("tbody tr")
                 .filter(new Locator.FilterOptions().setHasText(entryId))
                 .first();
